@@ -1,0 +1,183 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Loan Prediction</title>
+    <link rel="icon" type="image/x-icon" href="{{ url_for('static', filename='favicon.ico') }}">
+    <link rel="stylesheet" type="text/css" href="{{ url_for('static', filename='styles.css') }}">
+    <link rel="stylesheet" href="https://unpkg.com/leaflet/dist/leaflet.css" />
+    <script src="https://unpkg.com/leaflet/dist/leaflet.js"></script>
+
+    <script>
+        function submitForm(event) {
+            event.preventDefault();
+    
+            const formData = new FormData(event.target);
+            const data = new URLSearchParams();
+            for (const [key, value] of formData) {
+                data.append(key, value);
+            }
+    
+            fetch('/loan', {
+                method: 'POST',
+                body: data
+            })
+            .then(response => response.json())
+            .then(data => {
+                const resultDiv = document.querySelector('.prediction-result');
+                if (data.error) {
+                    resultDiv.innerHTML = `<h2>Error: ${data.error}</h2>`;
+                } else {
+                    resultDiv.innerHTML = `<h2>Your application has been ${data.prediction}!</h2>`;
+                    resultDiv.style.backgroundColor = 'azure';
+                }
+            })
+            .catch(error => console.error('Error:', error));
+        }
+    </script>
+    
+</head>
+<body>
+    <header>
+        <nav class="navbar">
+            <ul class="navbar-nav">
+                <li><a href="/" class="home-link">Home</a></li>
+                <li><a href="/loan" class="active">Loan Request</a></li>
+            </ul>
+        </nav>
+    </header>
+
+    <section id="main-content" class="container">
+        <div class="hero-section" style="margin-bottom: 10px;">
+            <img src="{{ url_for('static', filename='logo.png') }}" alt="Credit Compass Logo" class="logo-center">
+            <h1>Loan Request Form</h1>
+        </div>
+        
+        <div>{% if error_message is not none %}<p style="color: red;">{{ error_message }}</p>{% endif %}</div>
+
+        <div class="loan-form" style="background-color: bisque; padding-left: 20px; padding-right: 20px;">
+            <div>Welcome to our loan request page. Please complete the form below to assess your eligibility for a loan from Credit Compass.
+                We use modern day technology to make future decisions now. Through this form, our decision model will provide you with 
+                an early decision regarding your request!</div>
+
+                <form method="post" action="/predict" onsubmit="submitForm(event)">
+
+                <div class="form-group">
+                    <label for="loan_amnt">Loan Amount in USD</label>
+                    <input type="number" id="loan_amnt" name="loan_amnt" step="0.01" required>
+                </div>
+                
+                <div class="form-group">
+                    <label for="term">Term (in months)</label>
+                    <input type="text" id="term" name="term" required>
+                </div>
+                
+                <div class="form-group">
+                    <label for="int_rate">Interest Rate (in %)</label>
+                    <input type="number" id="int_rate" name="int_rate" min="12.0" step="0.01" required>
+                </div>
+                
+                <div class="form-group">
+                    <label for="installment">Monthly Installment</label>
+                    <input type="number" id="installment" name="installment" step="0.01" required>
+                </div>
+
+                <div class="form-group">
+                    <label for="emp_length">Employment Length (in years)</label>
+                    <input type="number" id="emp_length" name="emp_length" required>
+                </div>
+
+                <div class="form-group">
+                    <label for="annual_inc">Annual Income</label>
+                    <input type="number" id="annual_inc" name="annual_inc" step="0.01" required>
+                </div>
+
+                <div class="form-group">
+                    <label for="delinq_2yrs">Delinquencies in the last 2 years</label>
+                    <input type="number" id="delinq_2yrs" name="delinq_2yrs" required>
+                </div>
+
+                <div class="form-group">
+                    <label for="open_acc">Number of Open Accounts</label>
+                    <input type="number" id="open_acc" name="open_acc" required>
+                </div>
+
+                <div class="form-group">
+                    <label for="pub_rec">Public Records (Bankruptcies)</label>
+                    <input type="number" id="pub_rec" name="pub_rec" required>
+                </div>
+
+                <div class="form-group">
+                    <label for="mort_acc">Number of Mortgage Accounts</label>
+                    <input type="number" id="mort_acc" name="mort_acc" required>
+                </div>
+
+                <div class="form-group">
+                    <label for="home_ownership">Home Ownership</label>
+                    <select id="home_ownership" name="home_ownership" required>
+                        <option value="OWN">Own</option>
+                        <option value="MORTGAGE">Mortgage</option>
+                        <option value="RENT">Rent</option>
+                    </select>
+                </div> 
+
+                <div class="form-group">
+                    <label for="addr_state">Address State</label>
+                    <select id="addr_state" name="addr_state" required>
+                        <!-- Options for states -->
+                        <option value="AL">Alabama</option>
+                        <!-- Add other states -->
+                        <option value="CA">California</option>
+                        <!-- Add other states -->
+                        <option value="NY">New York</option>
+                        <!-- Add other states -->
+                    </select>
+                    
+                </div>
+
+                <div class="form-group">
+                    <label for="purpose">Purpose of Loan</label>
+                    <select id="purpose" name="purpose" required>
+                        <option value="debt_consolidation">Debt Consolidation</option>
+                        <option value="home_improvement">Home Improvement</option>
+                        <option value="major_purchase">Major Purchase</option>
+                        <option value="car">Car</option>
+                        <option value="vacation">Vacation</option>
+                        <option value="medical">Medical</option>
+                        <option value="moving">Moving</option>
+                        <option value="education">Education</option>
+                        <option value="small_business">Small Business</option>
+                    </select>
+                </div>
+
+                <div class="form-group">
+                    <label for="grade">Credit Grade</label>
+                    <select id="grade" name="grade" required>
+                        <option value="A">A (Very good)</option>
+                        <option value="B">B (Average)</option>
+                        <option value="C">C (Below Average)</option>
+                    </select>
+                </div>
+
+                <div class="form-group">
+                    <label for="dti">Debt-to-Income Ratio</label>
+                    <input type="number" id="dti" name="dti" step="0.01" required>
+                </div>
+
+                <button style="align-items: center" type="submit" class="button">Submit</button>
+            </form>
+        </div>
+
+        <div style="background-color: azure;">
+            <div class="prediction-result">
+                <!-- Prediction result will be displayed here -->
+            </div>
+        </div>
+    </section>
+
+    <footer class="footer">
+        <p>&copy; 2024 Credit Compass</p>
+    </footer>
+</body>
+</html>
