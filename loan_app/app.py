@@ -5,6 +5,10 @@ import plotly.express as px
 import json
 import psycopg2
 from psycopg2 import sql
+from contextlib import closing
+
+# Dummy model for demonstration
+from sklearn.dummy import DummyClassifier
 
 app = Flask(__name__)
 
@@ -85,17 +89,16 @@ def home():
 def initial_data():
     """Returns initial data for visualization plots."""
     try:
-        conn = get_db_connection()
-        df_queries = {
-            'df_purpose': 'SELECT purpose, COUNT(*) as count FROM loans GROUP BY purpose ORDER BY count DESC LIMIT 10',
-            'df_loan_approval_time': 'SELECT issue_year, COUNT(*) as count FROM loans GROUP BY issue_year ORDER BY issue_year',
-            'df_approval_by_state': "SELECT addr_state as state, COUNT(*) as count FROM loans WHERE loan_status='Paid' GROUP BY addr_state ORDER BY count DESC",
-            'df_income_loan_ratio': 'SELECT loan_status as status, AVG(income_to_loan_ratio) as mean_ratio FROM loans GROUP BY loan_status',
-            'df_interest_rate_time': 'SELECT issue_year, AVG(int_rate) as avg_rate FROM loans GROUP BY issue_year',
-            'df_employee_titles': 'SELECT emp_title as title, COUNT(*) as count FROM loans GROUP BY emp_title ORDER BY count DESC LIMIT 10'
-        }
-        dataframes = {name: pd.read_sql(query, conn) for name, query in df_queries.items()}
-        conn.close()
+        with closing(get_db_connection()) as conn:
+            queries = {
+                'df_purpose': 'SELECT purpose, COUNT(*) as count FROM loans GROUP BY purpose ORDER BY count DESC LIMIT 10',
+                'df_loan_approval_time': 'SELECT issue_year, COUNT(*) as count FROM loans GROUP BY issue_year ORDER BY issue_year',
+                'df_approval_by_state': "SELECT addr_state as state, COUNT(*) as count FROM loans WHERE loan_status='Paid' GROUP BY addr_state ORDER BY count DESC",
+                'df_income_loan_ratio': 'SELECT loan_status as status, AVG(income_to_loan_ratio) as mean_ratio FROM loans GROUP BY loan_status',
+                'df_interest_rate_time': 'SELECT issue_year, AVG(int_rate) as avg_rate FROM loans GROUP BY issue_year',
+                'df_employee_titles': 'SELECT emp_title as title, COUNT(*) as count FROM loans GROUP BY emp_title ORDER BY count DESC LIMIT 10'
+            }
+            dataframes = {name: pd.read_sql(query, conn) for name, query in queries.items()}
 
         # Prepare data for plots
         data = {
@@ -154,127 +157,10 @@ def initial_data():
         app.logger.error(f"Error in initial_data route: {e}")
         return jsonify({'error': str(e)}), 500
 
-@app.route('/filter_data')
-def filter_data():
-    """Filters data based on query parameters and returns plot data."""
-    year = request.args.get('year')
-    state = request.args.get('state')
-    loan_status = request.args.get('loan_status')
-    
-    try:
-        conn = get_db_connection()
-        
-        # Start with base query
-        query = sql.SQL('SELECT * FROM loans WHERE TRUE')
-        params = []
-
-        # Append conditions based on filters
-        if year:
-            query += sql.SQL(' AND issue_year = %s')
-            params.append(year)
-        if state:
-            query += sql.SQL(' AND addr_state = %s')
-            params.append(state)
-        if loan_status:
-            query += sql.SQL(' AND loan_status = %s')
-            params.append(loan_status)
-
-        df_filtered = pd.read_sql(query, conn, params=params)
-        conn.close()
-
-        # Generate data for plots
-        data = {
-            'plot1': {
-                'data': [{
-                    'x': df_filtered['purpose'].value_counts().index.tolist(),
-                    'y': df_filtered['purpose'].value_counts().tolist(),
-                    'type': 'bar'
-                }],
-                'layout': {'title': 'Top Reasons for Seeking a Loan'}
-            },
-            'plot2': {
-                'data': [{
-                    'x': df_filtered['issue_year'].value_counts().index.tolist(),
-                    'y': df_filtered['issue_year'].value_counts().tolist(),
-                    'type': 'line'
-                }],
-                'layout': {'title': 'Loan Approvals Over Time (Filtered)'}
-            },
-            'plot3': {
-                'data': [{
-                    'x': df_filtered['issue_year'].value_counts().index.tolist(),
-                    'y': df_filtered['issue_year'].value_counts().tolist(),
-                    'type': 'line'
-                }],
-                'layout': {'title': 'Loan Approvals Over Time (Filtered)'}
-            },
-            'plot4': {
-                'data': [{
-                    'x': df_filtered['issue_year'].value_counts().index.tolist(),
-                    'y': df_filtered['issue_year'].value_counts().tolist(),
-                    'type': 'line'
-                }],
-                'layout': {'title': 'Loan Approvals Over Time (Filtered)'}
-            },
-            'plot5': {
-                'data': [{
-                    'x': df_filtered['issue_year'].value_counts().index.tolist(),
-                    'y': df_filtered['issue_year'].value_counts().tolist(),
-                    'type': 'line'
-                }],
-                'layout': {'title': 'Loan Approvals Over Time (Filtered)'}
-            },
-            'plot6': {
-                'data': [{
-                    'x': df_filtered['issue_year'].value_counts().index.tolist(),
-                    'y': df_filtered['issue_year'].value_counts().tolist(),
-                    'type': 'line'
-                }],
-                'layout': {'title': 'Loan Approvals Over Time (Filtered)'}
-            }
-            # Add more plots if needed
-        }
-        return jsonify(data)
-    except Exception as e:
-        return jsonify({'error': str(e)}), 500
-
-@app.route('/dropdown_options')
-def dropdown_options():
-    """Returns unique options for dropdown menus."""
-    try:
-        conn = get_db_connection()
-        
-        # Execute queries to fetch distinct values
-        years_query = 'SELECT DISTINCT issue_year FROM loans ORDER BY issue_year'
-        states_query = 'SELECT DISTINCT addr_state FROM loans ORDER BY addr_state'
-        loan_statuses_query = 'SELECT DISTINCT loan_status FROM loans ORDER BY loan_status'
-
-        # Load data into DataFrames
-        df_years = pd.read_sql(years_query, conn)
-        df_states = pd.read_sql(states_query, conn)
-        df_loan_statuses = pd.read_sql(loan_statuses_query, conn)
-
-        # Close the connection
-        conn.close()
-
-        # Extract options from DataFrames
-        options = {
-            'years': df_years['issue_year'].tolist(),
-            'states': df_states['addr_state'].tolist(),
-            'loan_statuses': df_loan_statuses['loan_status'].tolist()
-        }
-
-        return jsonify(options)
-    except Exception as e:
-        # Log the error for debugging
-        app.logger.error(f"Error fetching dropdown options: {e}")
-        return jsonify({'error': 'Internal Server Error'}), 500
-
-
 def preprocess_and_align(df, expected_columns):
     """Preprocesses and aligns the DataFrame to match the model's expected input."""
     # Convert categorical fields to dummy variables
-    categorical_columns = ['term', 'purpose', 'grade', 'home_ownership', 'addr_state']
+    categorical_columns = ['term', 'home_ownership', 'addr_state', 'purpose', 'grade']
     df = pd.get_dummies(df, columns=categorical_columns, drop_first=True)
 
     # Ensure the DataFrame has the same columns as the model expects
@@ -289,97 +175,41 @@ def preprocess_and_align(df, expected_columns):
 def loan():
     """Handles the loan request form."""
     if request.method == 'POST':
-        # Collect form data
-        data = {
-            'loan_amnt': [float(request.form['loan_amnt'])],
-            'term': [request.form['term']],
-            'int_rate': [float(request.form['int_rate'])],
-            'installment': [float(request.form['installment'])],
-            'emp_length': [float(request.form['emp_length'])],
-            'annual_inc': [float(request.form['annual_inc'])],
-            'delinq_2yrs': [float(request.form['delinq_2yrs'])],
-            'open_acc': [float(request.form['open_acc'])],
-            'pub_rec': [float(request.form['pub_rec'])],
-            'mort_acc': [float(request.form['mort_acc'])],
-            'home_ownership': [request.form['home_ownership']],
-            'addr_state': [request.form['addr_state']],
-            'purpose': [request.form['purpose']],
-            'grade': [request.form['grade']],
-            'dti': [float(request.form['dti'])]
-        }
-
-        # Define expected columns
-        expected_columns = [
-            'loan_amnt', 'term', 'int_rate', 'installment', 'emp_length', 'annual_inc', 'delinq_2yrs',
-            'open_acc', 'pub_rec', 'mort_acc', 'home_ownership', 'addr_state', 'purpose', 'grade', 'dti'
-        ]
-        
         try:
-            # Convert data to DataFrame for prediction
+            # Collect and validate form data
+            data = {
+                'loan_amnt': [float(request.form.get('loan_amnt', 0))],
+                'term': [request.form.get('term', '')],
+                'int_rate': [float(request.form.get('int_rate', 0))],
+                'installment': [float(request.form.get('installment', 0))],
+                'emp_length': [float(request.form.get('emp_length', 0))],
+                'annual_inc': [float(request.form.get('annual_inc', 0))],
+                'delinq_2yrs': [float(request.form.get('delinq_2yrs', 0))],
+                'open_acc': [float(request.form.get('open_acc', 0))],
+                'pub_rec': [float(request.form.get('pub_rec', 0))],
+                'mort_acc': [float(request.form.get('mort_acc', 0))],
+                'home_ownership': [request.form.get('home_ownership', '')],
+                'addr_state': [request.form.get('addr_state', '')],
+                'purpose': [request.form.get('purpose', '')],
+                'grade': [request.form.get('grade', '')]
+            }
+
+            # Create DataFrame for prediction
             df = pd.DataFrame(data)
-            
-            # Preprocess and align DataFrame
-            prepared_df = preprocess_and_align(df, expected_columns)
-            
+
+            # Define expected columns
+            expected_columns = [
+                'loan_amnt', 'term', 'int_rate', 'installment', 'emp_length',
+                'annual_inc', 'delinq_2yrs', 'open_acc', 'pub_rec', 'mort_acc',
+                'home_ownership', 'addr_state', 'purpose', 'grade'
+            ]
+            df = preprocess_and_align(df, expected_columns)
+
             # Make prediction
-            prediction = model.predict(prepared_df)[0]
-            prediction_proba = model.predict_proba(prepared_df)[0].tolist()  # Convert numpy array to list
-            
-            return jsonify({
-                'approval_prediction': int(prediction),
-                'prediction_probabilities': prediction_proba
-            })
+            prediction = model.predict(df)[0]
+            return jsonify({'prediction': 'Approved' if prediction == 1 else 'Rejected'})
         except Exception as e:
+            app.logger.error(f"Error processing loan application: {e}")
             return jsonify({'error': str(e)}), 500
-    else:
-        return render_template('loan.html')
 
-app = Flask(__name__)
-
-# Ensure your model is loaded here
-# model = load_your_model()
-
-@app.route('/predict', methods=['GET', 'POST'])
-def predict():
-    """Handles prediction requests."""
-    if request.method == 'POST':
-        data = {
-            'loan_amnt': [float(request.form['loan_amnt'])],
-            'term': [request.form['term']],
-            'int_rate': [float(request.form['int_rate'])],
-            'installment': [float(request.form['installment'])],
-            'emp_length': [float(request.form['emp_length'])],
-            'annual_inc': [float(request.form['annual_inc'])],
-            'delinq_2yrs': [float(request.form['delinq_2yrs'])],
-            'open_acc': [float(request.form['open_acc'])],
-            'pub_rec': [float(request.form['pub_rec'])],
-            'mort_acc': [float(request.form['mort_acc'])],
-            'home_ownership': [request.form['home_ownership']],
-            'addr_state': [request.form['addr_state']],
-            'purpose': [request.form['purpose']],
-            'grade': [request.form['grade']],
-            'dti': [float(request.form['dti'])]
-        }
-
-        expected_columns = [
-            'loan_amnt', 'term', 'int_rate', 'installment', 'emp_length', 'annual_inc', 'delinq_2yrs',
-            'open_acc', 'pub_rec', 'mort_acc', 'home_ownership', 'addr_state', 'purpose', 'grade', 'dti'
-        ]
-
-        try:
-            df = pd.DataFrame(data)
-            prepared_df = preprocess_and_align(df, expected_columns)
-            prediction = model.predict(prepared_df)[0]
-            prediction_proba = model.predict_proba(prepared_df)[0].tolist()
-            
-            return jsonify({
-                'approval_prediction': int(prediction),
-                'prediction_probabilities': prediction_proba
-            })
-        except Exception as e:
-            return jsonify({'error': str(e)}), 500
-    else:
-        return render_template('loan.html')
-
-if __name__ == '__main__':
-    app.run(debug=True)
+    return render_template('loan.html')

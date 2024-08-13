@@ -12,31 +12,31 @@
     <script>
         function submitForm(event) {
             event.preventDefault();
-
+    
             const formData = new FormData(event.target);
             const data = new URLSearchParams();
             for (const [key, value] of formData) {
                 data.append(key, value);
             }
-
-            fetch('/predict', {
+    
+            fetch('/loan', {
                 method: 'POST',
                 body: data
             })
             .then(response => response.json())
             .then(data => {
                 const resultDiv = document.querySelector('.prediction-result');
-                if (data.approval_prediction === 0) {
-                    resultDiv.innerHTML = `<h2>Your application has not been approved yet.</h2>`;
+                if (data.error) {
+                    resultDiv.innerHTML = `<h2>Error: ${data.error}</h2>`;
                 } else {
-                    resultDiv.innerHTML = `<h2>Your loan application has been accepted!</h2>`;
+                    resultDiv.innerHTML = `<h2>Your application has been ${data.prediction}!</h2>`;
+                    resultDiv.style.backgroundColor = 'azure';
                 }
-                resultDiv.innerHTML += `<p>This decision has been made with an accuracy of ${data.prediction_probabilities[0] * 100}% to ${data.prediction_probabilities[1] * 100}%.</p>`;
-                resultDiv.style.backgroundColor = 'azure';
             })
             .catch(error => console.error('Error:', error));
         }
     </script>
+    
 </head>
 <body>
     <header>
