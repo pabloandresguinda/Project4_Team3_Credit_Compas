@@ -1,0 +1,147 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Credit Compass - Home</title>
+    <link rel="stylesheet" type="text/css" href="{{ url_for('static', filename='styles.css') }}">
+    <link rel="stylesheet" href="https://unpkg.com/leaflet/dist/leaflet.css" />
+    <link rel="stylesheet" href="https://unpkg.com/leaflet-control-layers/dist/leaflet-control-layers.min.css" />
+    <script src="https://unpkg.com/leaflet/dist/leaflet.js"></script>
+    <script src="https://unpkg.com/leaflet-control-layers/dist/leaflet-control-layers.min.js"></script>
+    <script src="https://cdn.plot.ly/plotly-latest.min.js"></script>
+    <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+
+    <script src="{{ url_for('static', filename='scripts/map.js') }}"></script>
+    <script src="{{ url_for('static', filename='scripts/filters.js') }}"></script>
+    <script src="{{ url_for('static', filename='scripts/plots.js') }}"></script>
+</head>
+
+<body onload="initializeMap()">
+    <header>
+        <nav class="navbar">
+            <ul class="navbar-nav">
+                <li><a href="/" class="active">Home</a></li>
+                <li><a href="/loan">Loan Request</a></li>
+            </ul>
+        </nav>
+    </header>
+
+    <section id="main-content" class="container">
+        <div class="hero-section">
+            <img src="{{ url_for('static', filename='logo.png') }}" alt="Credit Compass Logo" class="logo-center">
+            <h1>Welcome to Credit Compass</h1>
+            <hr>
+            <p><i>As the biggest lending online platform in the world, we are here to help you get your loan approved
+                    within
+                    30 minutes of application! Perhaps you were wondering about a cosigner, maybe it is because you are
+                    jobless, could it be that your income is unpredictable?</i><br>
+            <h3 style="color: red;">Our mission is to partner with you, to get you ahead, and become your Credit
+                Compass...</h3>
+            </p>
+        </div>
+
+        <div class="map-section">
+            <h2 style="color: royalblue; font-weight: bold;">Our Reach and Outlook in the United States Since 2007</h2>
+            <p style="text-align: center;">Our team has offered credit services to over {{ total_customers }} people.
+            </p>
+            <div id="map" style="height: 500px;"></div>
+            <div id="legend"
+                style="position: absolute; bottom: 10px; left: 10px; background: white; padding: 10px; border-radius: 5px;">
+            </div>
+        </div>
+
+        <div class="filter-section">
+            <!--<h2>Filters</h2> -->
+            <form id="filter-form">
+                <div class="form-row">
+                    <div class="form-group">
+                        <label for="year">Year:</label>
+                        <select id="year" name="year">
+                            <!--   <option value="">Select Year</option>-->
+                        </select>
+                    </div>
+                    <div class="form-group">
+                        <label for="state">State:</label>
+                        <select id="state" name="state">
+                            <!--   <option value="">Select State</option>-->
+                        </select>
+                    </div>
+                    <div class="form-group">
+                        <label for="loan-status">Loan Status:</label>
+                        <select id="loan-status" name="loan-status">
+                            <!--   <option value="">Select Loan Status</option>-->
+                        </select>
+                    </div>
+                </div>
+                <div class="form-row">
+                    <div class="form-group-button">
+                        <button type="button" class="button one" onclick="applyFilters()">Apply Filters</button>
+                        <button type="button" class="button two" onclick="resetFilters()">Reset Filters</button>
+                    </div>
+                </div>
+            </form>
+        </div>
+
+        <div class="plot-row">
+            <div class="plot">
+                <h2>Top 10 Reasons for Seeking a Loan</h2>
+                <div id="plot1" class="chart"></div>
+            </div>
+            <div class="plot">
+                <h2>Loan Approvals Over Time</h2>
+                <div id="plot2" class="chart"></div>
+            </div>
+        </div>
+
+        <div class="plot-row">
+            <div class="plot">
+                <h2>Loan Approval Rates by State</h2>
+                <div id="plot3" class="chart"></div>
+            </div>
+            <div class="plot">
+                <h2>Ability to Pay Back</h2>
+                <figcaption style="text-align: center; font-style: italic;">Mean Income-to-Loan Ratio</figcaption>
+                <div id="plot4" class="chart"></div>
+            </div>
+        </div>
+
+        <div class="plot-row">
+            <div class="plot">
+                <h2>Interest Rates Over Time</h2>
+                <div id="plot5" class="chart"></div>
+            </div>
+            <div class="plot">
+                <h2>Top 10 Loan Applicants</h2>
+                <div id="plot6" class="chart"></div>
+            </div>
+        </div>
+
+        <div class="go-to-loan">
+            <a href="/loan" class="button">Go to Loan Request</a>
+        </div>
+    </section>
+
+    <footer class="footer">
+        <p>&copy; 2024 Credit Compass</p>
+    </footer>
+
+
+
+    <!-- Your custom scripts -->
+
+<script>
+    // Directly embed GeoJSON data here
+    var statesGeoJSON = {{ states_geojson|tojson|safe }};
+    console.log(statesGeoJSON);
+</script>
+
+
+
+
+
+
+</body>
+
+</html>

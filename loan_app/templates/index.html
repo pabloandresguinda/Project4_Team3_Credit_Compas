@@ -1,0 +1,485 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Credit Compass Home</title>
+    <link rel="stylesheet" type="text/css" href="{{ url_for('static', filename='styles.css') }}">
+    <link rel="stylesheet" href="https://unpkg.com/leaflet/dist/leaflet.css">
+    <link rel="stylesheet" href="https://unpkg.com/leaflet-control-layers/dist/leaflet-control-layers.min.css">
+    <script src="https://unpkg.com/leaflet/dist/leaflet.js"></script>
+    <script src="https://unpkg.com/leaflet-control-layers/dist/leaflet-control-layers.min.js"></script>
+    <script src="https://cdn.plot.ly/plotly-latest.min.js"></script>
+    <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+</head>
+
+<body>
+    <header>
+        <nav class="navbar">
+            <ul class="navbar-nav">
+                <li><a href="/" class="active">Home</a></li>
+                <li><a href="/loan">Loan Request</a></li>
+            </ul>
+        </nav>
+    </header>
+
+    <section id="main-content" class="container">
+        <div class="hero-section">
+            <img src="{{ url_for('static', filename='logo.png') }}" alt="Credit Compass Logo" class="logo-center">
+            <h1>Welcome to Credit Compass</h1>
+            <hr>
+            <p>
+                <i>As the biggest lending online platform in the world, we are here to help you get your loan approved
+                    within 30 minutes of application! Perhaps you were wondering about a cosigner, maybe it is because you are
+                    jobless, could it be that your income is unpredictable?</i>
+                <br>
+                <h3 style="color: red;">Our mission is to partner with you, to get you ahead, and become your Credit Compass...</h3>
+            </p>
+        </div>
+
+        <div class="map-section">
+            <h2 style="color: royalblue; font-weight: bold;">Our Reach and Outlook in the United States Since 2007</h2>
+            <p style="text-align: center;">Our team has offered credit services to over {{ total_customers }} people.</p>
+            <div id="map" style="height: 500px;"></div>
+            <div id="legend" class="legend"></div>
+        </div></div> 
+
+           
+
+        <div class="plot-row">
+            <div class="plot">
+                <h2>Top 10 Reasons for Seeking a Loan</h2>
+                <div id="plot1" class="chart"></div>
+            </div>
+            <div class="plot">
+                <h2>Loan Approvals Over Time</h2>
+                <div id="plot2" class="chart"></div>
+            </div>
+        </div>
+
+        <div class="plot-row">
+            <div class="plot">
+                <h2>Loan Approval Rates by State</h2>
+                <div id="plot3" class="chart"></div>
+            </div>
+            <div class="plot">
+                <h2>Ability to Pay Back</h2>
+                <figcaption style="text-align: center; font-style: italic;">Mean Income-to-Loan Ratio</figcaption>
+                <div id="plot4" class="chart"></div>
+            </div>
+        </div>
+
+        <div class="plot-row">
+            <div class="plot">
+                <h2>Interest Rates Over Time</h2>
+                <div id="plot5" class="chart"></div>
+            </div>
+            <div class="plot">
+                <h2>Top 10 Loan Applicants</h2>
+                <div id="plot6" class="chart"></div>
+            </div>
+        </div>
+
+        <div class="go-to-loan">
+            <a href="/loan" class="button">Go to Loan Request</a>
+        </div>
+    </section>
+
+    <footer class="footer">
+        <p>&copy; 2024 Credit Compass</p>
+    </footer>
+
+    <script>
+
+
+        // Initialize the map
+        var map = L.map('map').setView([37.7749, -122.4194], 5);
+
+        // Add a tile layer (base map)
+        L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+            attribution: "&copy; <a href='https://www.openstreetmap.org/copyright'>OpenStreetMap</a> contributors"
+        }).addTo(map);
+
+        // Ensure statesGeoJSON is correctly provided
+        var statesGeoJSON = {{ states_geojson| safe }};
+
+        // Function to get color based on property value
+        function getColor(value, type) {
+            const thresholds = {
+                'loansapproved': [10000, 5000, 2000, 1000, 500, 200, 100, 50],
+                'percent_loans_paid': [90, 80, 70, 60, 50, 40, 30, 20],
+                'avg_income_to_loan_ratio': [10, 8, 6, 4, 2, 1, 0.5, 0],
+                'sum_loan_amnt': [500000, 300000, 200000, 100000, 50000, 10000, 5000, 1000]
+            };
+            const colors = {
+                'loansapproved': ['#FFEDA0', '#FED976', '#FEB24C', '#FD8D3C', '#FC4E2A', '#E31A1C', '#BD0026', '#800026'],
+                'percent_loans_paid': ['#FFEDA0', '#FED976', '#FEB24C', '#FD8D3C', '#FC4E2A', '#E31A1C', '#BD0026', '#800026'],
+                'avg_income_to_loan_ratio': ['#FFEDA0', '#FED976', '#FEB24C', '#FD8D3C', '#FC4E2A', '#E31A1C', '#BD0026', '#800026'],
+                'sum_loan_amnt': ['#FFEDA0', '#FED976', '#FEB24C', '#FD8D3C', '#FC4E2A', '#E31A1C', '#BD0026', '#800026']
+            };
+            const typeThresholds = thresholds[type];
+            const typeColors = colors[type];
+
+            for (let i = 0; i < typeThresholds.length; i++) {
+                if (value > typeThresholds[i]) {
+                    return typeColors[i];
+                }
+            }
+            return typeColors[typeColors.length - 1];
+        }
+
+        // Function to create and add GeoJSON layers
+        function createGeoJsonLayer(property, colorType) {
+            return L.geoJson(statesGeoJSON, {
+                style: function (feature) {
+                    return {
+                        fillColor: getColor(feature.properties[property], colorType),
+                        weight: 2,
+                        opacity: 1,
+                        color: 'white',
+                        dashArray: '3',
+                        fillOpacity: 0.7
+                    };
+                },
+                onEachFeature: function (feature, layer) {
+                    layer.on({
+                        mouseover: highlightFeature,
+                        mouseout: resetHighlight,
+                        click: showPopup
+                    });
+                    layer.bindPopup(getPopupContent(feature, property));
+                }
+            });
+        }
+
+        // Highlight feature function
+        function highlightFeature(e) {
+            var layer = e.target;
+            layer.setStyle({
+                weight: 2,
+                color: '#666',
+                dashArray: '',
+                fillOpacity: 0.7
+            });
+            if (!L.Browser.ie && !L.Browser.opera && !L.Browser.edge) {
+                layer.bringToFront();
+            }
+        }
+
+        // Reset highlight function
+        function resetHighlight(e) {
+            var layer = e.target;
+            layer.setStyle({
+                weight: 2,
+                color: 'white',
+                dashArray: '3',
+                fillOpacity: 0.7
+            });
+        }
+
+        // Function to create popup content
+        function getPopupContent(feature, property) {
+            var state = feature.properties.name;
+            var dataValue = feature.properties[property];
+            return `<strong>${state}</strong><br>${property.replace(/_/g, ' ').toUpperCase()}: ${dataValue !== undefined ? dataValue.toLocaleString() : 'Data not available'}`;
+        }
+
+        // Show popup with data for the clicked layer
+        function showPopup(e) {
+            var layer = e.target;
+            var state = layer.feature.properties.name;
+            var popupContent = `<strong>${state}</strong><br>`;
+
+            // Extract the property from the clicked layer and display its value
+            var properties = layer.feature.properties;
+            Object.keys(properties).forEach(function (key) {
+                if (properties[key] !== undefined) {
+                    popupContent += `${key.replace(/_/g, ' ')}: ${properties[key] !== undefined ? properties[key].toLocaleString() : 'Data not available'}<br>`;
+                }
+            });
+
+            layer.bindPopup(popupContent).openPopup();
+        }
+
+        // Function to add legends
+        function addLegend(type) {
+            var legend = L.control({ position: 'bottomleft' });
+
+            legend.onAdd = function () {
+                var div = L.DomUtil.create('div', 'info legend');
+                const thresholds = {
+                    'loansapproved': [50, 100, 200, 500, 1000, 2000, 5000, 10000],
+                    'percent_loans_paid': [20, 30, 40, 50, 60, 70, 80, 90],
+                    'avg_income_to_loan_ratio': [0, 0.5, 1, 2, 4, 6, 8, 10],
+                    'sum_loan_amnt': [1000, 5000, 10000, 50000, 100000, 200000, 300000, 500000]
+                };
+                const colors = {
+                    'loansapproved': ['#FFEDA0', '#FED976', '#FEB24C', '#FD8D3C', '#FC4E2A', '#E31A1C', '#BD0026', '#800026'],
+                    'percent_loans_paid': ['#FFEDA0', '#FED976', '#FEB24C', '#FD8D3C', '#FC4E2A', '#E31A1C', '#BD0026', '#800026'],
+                    'avg_income_to_loan_ratio': ['#FFEDA0', '#FED976', '#FEB24C', '#FD8D3C', '#FC4E2A', '#E31A1C', '#BD0026', '#800026'],
+                    'sum_loan_amnt': ['#FFEDA0', '#FED976', '#FEB24C', '#FD8D3C', '#FC4E2A', '#E31A1C', '#BD0026', '#800026']
+                };
+
+                div.innerHTML = '<strong>Legend Scale ($)</strong><br>';/*'<strong>' + type.replace(/_/g, ' ').toUpperCase() + '</strong><br>';*/
+                const typeThresholds = thresholds[type];
+                const typeColors = colors[type];
+                for (var i = 0; i < typeThresholds.length; i++) {
+                    div.innerHTML +=
+                        '<i style="background:' + typeColors[i] + '"></i> ' +
+                        (typeThresholds[i] ?
+                            (typeThresholds[i + 1] ?
+                                ('<span style="float: right;">' + typeThresholds[i] + '–' + typeThresholds[i + 1] + '</span>') :
+                                ('<span style="float: right;">' + typeThresholds[i] + '+</span>')) + '<br>' :
+                            '');
+                }
+
+                return div;
+            };
+
+            return legend;
+        }
+
+        // Function to update the legend when a new layer is selected
+        function updateLegend(type) {
+            if (map.hasLayer(currentLayer)) {
+                map.removeControl(legendControl);
+            }
+            legendControl = addLegend(type);
+            legendControl.addTo(map);
+        }
+
+        // Create GeoJSON layers
+        var sumLoanAmountLayer = createGeoJsonLayer('sum_loan_amnt', 'sum_loan_amnt');
+        var avgIncomeToLoanRatioLayer = createGeoJsonLayer('avg_income_to_loan_ratio', 'avg_income_to_loan_ratio');
+        var percentLoansPaidLayer = createGeoJsonLayer('percent_loans_paid', 'percent_loans_paid');
+        var loansapprovedLayer = createGeoJsonLayer('loansapproved', 'loansapproved');
+
+        // Layer Groups
+        var layerGroups = {
+            'Sum of Loan Amount': sumLoanAmountLayer,
+            'Average Income to Loan Ratio': avgIncomeToLoanRatioLayer,
+            'Percentage of Loans Paid': percentLoansPaidLayer,
+            'Loans Approved': loansapprovedLayer
+        };
+
+        // Add layers to the map with layer control
+        var layerControl = L.control.layers(null, layerGroups).addTo(map);
+
+        // Initially add the first layer and legend
+        var currentLayer = sumLoanAmountLayer;
+        var legendControl = addLegend('sum_loan_amnt');
+        legendControl.addTo(map);
+
+        // Update legend based on the selected layer
+        layerControl.onAdd = function () {
+            var div = L.DomUtil.create('div', 'info legend');
+            div.innerHTML = '<strong>Legend</strong><br>';
+            return div;
+        };
+
+        // layerControl.on('overlayadd', function (eventLayer) { // plot charts error
+        //     var layerName = eventLayer.name;
+        //     var propertyType = '';
+        //     if (layerName === 'Sum of Loan Amount') propertyType = 'sum_loan_amnt';
+        //     if (layerName === 'Average Income to Loan Ratio') propertyType = 'avg_income_to_loan_ratio';
+        //     if (layerName === 'Percentage of Loans Paid') propertyType = 'percent_loans_paid';
+        //     if (layerName === 'Loans Approved') propertyType = 'loansapproved';
+        //     if (propertyType) {
+        //         updateLegend(propertyType);
+        //     }
+        // });
+
+    
+        // filters.js
+/// Function to apply filters and update plots
+function applyFilters() {
+    const year = $('#year').val();
+    const state = $('#state').val();
+    const loanStatus = $('#loan-status').val();
+
+    $.ajax({
+        url: '/filter_data',
+        method: 'GET',
+        data: { year, state, loan_status: loanStatus },
+        dataType: 'json'
+    })
+    .done(function (data) {
+        console.log('Response Data:', data); // Debugging line to inspect data
+        updatePlots(data);
+    })
+    .fail(function (jqXHR, textStatus, errorThrown) {
+        console.error('Error fetching data:', textStatus, errorThrown);
+    });
+}
+
+
+// Function to update all plots
+// function updatePlots(data) {
+//     console.log('Data received for plotting:', data); // Debugging line to inspect data
+
+//     if (data) {
+//         Plotly.react('plot1', data.plot1 ? data.plot1.data : [], data.plot1 ? data.plot1.layout : {}, { responsive: true });
+//         Plotly.react('plot2', data.plot2 ? data.plot2.data : [], data.plot2 ? data.plot2.layout : {}, { responsive: true });
+//         Plotly.react('plot3', data.plot3 ? data.plot3.data : [], data.plot3 ? data.plot3.layout : {}, { responsive: true });
+//         Plotly.react('plot4', data.plot4 ? data.plot4.data : [], data.plot4 ? data.plot4.layout : {}, { responsive: true });
+//         Plotly.react('plot5', data.plot5 ? data.plot5.data : [], data.plot5 ? data.plot5.layout : {}, { responsive: true });
+//         Plotly.react('plot6', data.plot6 ? data.plot6.data : [], data.plot6 ? data.plot6.layout : {}, { responsive: true });
+//     } else {
+//         console.error('Data is undefined or null');
+//     }
+// }
+
+function updatePlots(data) {
+            console.log('Data received for plotting:', data);  // Log the data to verify its structure
+
+            // Update each plot if data is available
+            if (data.plot1) {
+                Plotly.react('plot1', data.plot1.data, data.plot1.layout, { responsive: true });
+            } else {
+                console.warn('No data received for plot1');
+            }
+
+            if (data.plot2) {
+                Plotly.react('plot2', data.plot2.data, data.plot2.layout, { responsive: true });
+            } else {
+                console.warn('No data received for plot2');
+            }
+
+            if (data.plot3) {
+                Plotly.react('plot3', data.plot3.data, data.plot3.layout, { responsive: true });
+            } else {
+                console.warn('No data received for plot3');
+            }
+
+            if (data.plot4) {
+                Plotly.react('plot4', data.plot4.data, data.plot4.layout, { responsive: true });
+            } else {
+                console.warn('No data received for plot4');
+            }
+
+            if (data.plot5) {
+                Plotly.react('plot5', data.plot5.data, data.plot5.layout, { responsive: true });
+            } else {
+                console.warn('No data received for plot5');
+            }
+
+            if (data.plot6) {
+                Plotly.react('plot6', data.plot6.data, data.plot6.layout, { responsive: true });
+            } else {
+                console.warn('No data received for plot6');
+            }
+        }
+
+
+
+function updatePlots(data) {
+    console.log('Data received for plotting:', data); // Debugging line to inspect data
+
+    if (data) {
+        Object.keys(data).forEach(function (key) {
+            if (data[key]) {
+                Plotly.react(key, data[key].data || [], data[key].layout || {}, { responsive: true });
+            } else {
+                console.error('Plot data for', key, 'is missing');
+            }
+        });
+    } else {
+        console.error('Data is undefined or null');
+    }
+}
+
+
+
+
+
+
+// Function to render initial plots
+function renderInitialPlots() {
+    $.getJSON('/initial_data')
+        .done(function (data) {
+            Plotly.newPlot('plot1', data.plot1.data, data.plot1.layout, { responsive: true });
+            Plotly.newPlot('plot2', data.plot2.data, data.plot2.layout, { responsive: true });
+            Plotly.newPlot('plot3', data.plot3.data, data.plot3.layout, { responsive: true });
+            Plotly.newPlot('plot4', data.plot4.data, data.plot4.layout, { responsive: true });
+            Plotly.newPlot('plot5', data.plot5.data, data.plot5.layout, { responsive: true });
+            Plotly.newPlot('plot6', data.plot6.data, data.plot6.layout, { responsive: true });
+        })
+        .fail(function (jqXHR, textStatus, errorThrown) {
+            console.error('Error fetching initial data:', textStatus, errorThrown);
+        });
+}
+
+// Function to populate dropdowns
+function populateDropdowns() {
+    $.getJSON('/dropdown_options')
+        .done(function (data) {
+            console.log('Dropdown data:', data); // Log the received data for debugging
+            
+            // Check if data contains expected keys
+            if (data.years && data.states && data.loan_statuses) {
+                // Populate year dropdown
+                var yearOptions = data.years.map(function (year) {
+                    return '<option value="' + year + '">' + year + '</option>';
+                });
+                $('#year').html('<option value="">Select Year</option>' + yearOptions.join(''));
+
+                // Populate state dropdown
+                var stateOptions = data.states.map(function (state) {
+                    return '<option value="' + state + '">' + state + '</option>';
+                });
+                $('#state').html('<option value="">Select State</option>' + stateOptions.join(''));
+
+                // Populate loan status dropdown
+                var loanStatusOptions = data.loan_statuses.map(function (status) {
+                    return '<option value="' + status + '">' + status + '</option>';
+                });
+                $('#loan-status').html('<option value="">Select Loan Status</option>' + loanStatusOptions.join(''));
+            } else {
+                console.error('Dropdown data is missing expected keys');
+            }
+        })
+        .fail(function (jqXHR, textStatus, errorThrown) {
+            console.error('Error fetching dropdown options:', textStatus, errorThrown);
+        });
+}
+
+
+$(document).ready(function () {
+    populateDropdowns(); // Populate dropdowns on page load
+    $('#filter-form').on('submit', function (e) {
+        e.preventDefault();
+        applyFilters();
+    });
+    renderInitialPlots();
+});
+
+// Function to reset filters
+function resetFilters() {
+    // Clear filter form fields
+    $('#year').val('');
+    $('#state').val('');
+    $('#loan-status').val('');
+
+    // Optionally refresh the page or clear plots
+    location.reload(); // Reload the page to reset the filter application
+    // Or call a function to clear plots without refreshing
+    // clearPlots();
+}
+
+// Function to clear plots
+function clearPlots() {
+    // Example of clearing plots by updating them with empty data
+    ['plot1', 'plot2', 'plot3', 'plot4', 'plot5', 'plot6'].forEach(plotId => {
+        Plotly.react(plotId, { data: [], layout: {} });
+    });
+}
+
+
+
+    </script>
+
+
+</body>
+
+</html>
