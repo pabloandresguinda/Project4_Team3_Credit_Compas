@@ -48,10 +48,7 @@ To create a machine learning model that predicts loan approval based on various 
 - **Web Framework**: Flask
 - **Visualization**: Leaflet, D3.js
 
-## Data Management
-- **Data Cleaning**: Removal of missing or irrelevant data.
-- **Normalization & Standardization**: Scaling features to ensure uniformity.
-- **Feature Engineering**: Identification and creation of critical features.
+## A. Machine Learning
 
 ### 1. Data Collection and Preparation
 - **Import libraries**
@@ -208,13 +205,10 @@ print("Prediction Probabilities:", prediction_proba)
     * a loan request page `loan.html` where a user can fill in background details (echoing the essential features in the model) and by submitting the form, receive a response on whether their loan application is approved or declined.
       ![image](https://github.com/user-attachments/assets/5c0c3115-b387-45ea-9194-a009568f479d)
 
-   
-# Setting up and Running the App        
 
-## Steps to Set Up and Run the Flask App
-# Setting Up and Running the Credit Compass Loan Approval Prediction App Locally
+## B. Setting Up and Running the Credit Compass Loan Approval Prediction App Locally
 
-## Prerequisites
+### Prerequisites
 
 ### Environment Setup:
 1. **Python 3.10.13**: Ensure that you have Python 3.10.13 installed or other similar version. You can download it from [Python's official website](https://www.python.org/).
